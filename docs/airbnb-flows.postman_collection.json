@@ -11,7 +11,8 @@
     { "key": "listingId", "value": "" },
     { "key": "bookingId", "value": "" },
     { "key": "resolutionId", "value": "" },
-    { "key": "notificationId", "value": "" }
+    { "key": "notificationId", "value": "" },
+    { "key": "userId", "value": "" }
   ],
   "item": [
     {
@@ -387,7 +388,7 @@
             "method": "PUT",
             "header": [{"key": "Authorization", "value": "Bearer {{accessToken}}"}],
             "url": "{{baseUrl}}/bookings/{{bookingId}}/check-in",
-            "description": "Фиксация въезда гостя (статус CHECKED_IN)."
+            "description": "Фиксация въезда гостя (статус CHECKED_IN). Выполнить может только гость этого бронирования или админ (ALL_BOOKING_UPDATE); владелец листинга не может."
           }
         },
         {
@@ -396,7 +397,7 @@
             "method": "PUT",
             "header": [{"key": "Authorization", "value": "Bearer {{accessToken}}"}],
             "url": "{{baseUrl}}/bookings/{{bookingId}}/check-out",
-            "description": "Фиксация выезда гостя (статус CHECKED_OUT). После выезда может автоматически открыться окно разрешения споров."
+            "description": "Фиксация выезда гостя (статус CHECKED_OUT). Только гость этого бронирования или админ. После выезда может автоматически открыться окно разрешения споров."
           }
         }
       ]
@@ -512,12 +513,28 @@
           }
         },
         {
-          "name": "Close resolution (admin)",
+          "name": "Close resolution (admin or owner from REFUSED)",
           "request": {
             "method": "PUT",
             "header": [{"key": "Authorization", "value": "Bearer {{accessToken}}"}],
             "url": "{{baseUrl}}/resolutions/{{resolutionId}}/close",
-            "description": "Закрытие окна разрешения (только админ)."
+            "description": "Закрытие окна: админ — всегда; владелец — только из статуса REFUSED (закрыть без эскалации). Владельцу при закрытии без эскалации уходит RESOLUTION_WINDOW_CLOSED_BY_OWNER."
+          }
+        },
+        {
+          "name": "Resolve escalation (admin)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{accessToken}}"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"substantialIncident\": true\n}"
+            },
+            "url": "{{baseUrl}}/resolutions/{{resolutionId}}/resolve-escalation",
+            "description": "Решение по эскалации (только админ): true — назначить обязательную выплату гостю (MANDATORY_PAYMENT), false — урегулировать без взыскания, уведомить владельца."
           }
         }
       ]
@@ -607,8 +624,58 @@
           "request": {
             "method": "GET",
             "header": [{"key": "Authorization", "value": "Bearer {{accessToken}}"}],
-            "url": "{{baseUrl}}/users/1",
-            "description": "Пользователь по id (админ). Замените 1 на нужный id."
+            "url": "{{baseUrl}}/users/{{userId}}",
+            "description": "Пользователь по id (только ALL_USER_READ). Переменная userId или подставьте id вручную."
+          }
+        },
+        {
+          "name": "Get user by username (admin)",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{accessToken}}"}],
+            "url": "{{baseUrl}}/users/username/owner1",
+            "description": "Пользователь по username (ALL_USER_READ). Замените owner1 на нужный username."
+          }
+        },
+        {
+          "name": "Update user (admin)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{accessToken}}"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"newusername\",\n  \"email\": \"new@example.com\"\n}"
+            },
+            "url": "{{baseUrl}}/users/{{userId}}",
+            "description": "Обновление профиля пользователя (ALL_USER_UPDATE). Тело: username, email (опционально)."
+          }
+        },
+        {
+          "name": "Update user roles (admin)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{accessToken}}"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"roles\": [\"ROLE_USER\", \"ROLE_ADMIN\"]\n}"
+            },
+            "url": "{{baseUrl}}/users/{{userId}}/roles",
+            "description": "Обновление ролей пользователя (ALL_USER_UPDATE). Тело: roles — массив имён ролей (ROLE_USER, ROLE_ADMIN)."
+          }
+        },
+        {
+          "name": "Delete user (admin)",
+          "request": {
+            "method": "DELETE",
+            "header": [{"key": "Authorization", "value": "Bearer {{accessToken}}"}],
+            "url": "{{baseUrl}}/users/{{userId}}",
+            "description": "Удаление пользователя по id (только ALL_USER_DELETE)."
           }
         }
       ]
