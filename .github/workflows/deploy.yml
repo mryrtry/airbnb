@@ -71,13 +71,13 @@ jobs:
 
       - name: Create directory structure on server
         run: |
-          ssh -p ${{ env.DEPLOY_PORT }} ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }} /bin/bash << 'EOF'
+          ssh -p ${{ env.DEPLOY_PORT }} ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }} /bin/sh << 'EOF'
           mkdir -p ~/airbnb
           EOF
 
       - name: Stop existing application
         run: |
-          ssh -p ${{ env.DEPLOY_PORT }} ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }} /bin/bash << 'EOF'
+          ssh -p ${{ env.DEPLOY_PORT }} ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }} /bin/sh << 'EOF'
           PID=$(pgrep -f airbnb.jar || true)
           if [ -n "$PID" ]; then
             kill -9 $PID
@@ -92,7 +92,7 @@ jobs:
 
       - name: Start application
         run: |
-          ssh -p ${{ env.DEPLOY_PORT }} ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }} /bin/bash << 'EOF'
+          ssh -p ${{ env.DEPLOY_PORT }} ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }} /bin/sh << 'EOF'
           cd ~/airbnb
           _JAVA_OPTIONS=""
           nohup java -Xmx512m -Xms256m -jar airbnb.jar --spring.profiles.active=prod > airbnb.log 2>&1 &
@@ -112,19 +112,19 @@ jobs:
 
       - name: Check application process
         run: |
-          ssh -p ${{ env.DEPLOY_PORT }} ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }} /bin/bash << 'EOF'
+          ssh -p ${{ env.DEPLOY_PORT }} ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }} /bin/sh << 'EOF'
           ps aux | grep airbnb.jar | grep -v grep
           EOF
 
       - name: Check application logs
         run: |
-          ssh -p ${{ env.DEPLOY_PORT }} ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }} /bin/bash << 'EOF'
+          ssh -p ${{ env.DEPLOY_PORT }} ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }} /bin/sh << 'EOF'
           tail -20 ~/airbnb/airbnb.log
           EOF
 
       - name: Check health endpoint
         run: |
           sleep 30
-          ssh -p ${{ env.DEPLOY_PORT }} ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }} /bin/bash << 'EOF'
+          ssh -p ${{ env.DEPLOY_PORT }} ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }} /bin/sh << 'EOF'
           curl -s -o /dev/null -w 'Health Check: %{http_code}\n' localhost:${{ env.SERVER_PORT }}/health
           EOF
