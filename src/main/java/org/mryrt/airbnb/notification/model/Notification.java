@@ -32,7 +32,7 @@ public class Notification {
     private Long userId;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 80, columnDefinition = "varchar(80) not null")
+    @Column(nullable = false, length = 80)
     private NotificationType type;
 
     @Column(nullable = false, length = 500)
