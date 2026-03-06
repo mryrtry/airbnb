@@ -8,6 +8,9 @@ on:
 
 env:
   SERVER_PORT: 8126
+  DEPLOY_HOST: se.ifmo.ru
+  DEPLOY_USER: s409483
+  DEPLOY_PORT: "2222"
 
 jobs:
   build:
@@ -64,17 +67,17 @@ jobs:
           mkdir -p ~/.ssh
           printf "%s\n" "${{ secrets.DEPLOY_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan 83.166.246.71 >> ~/.ssh/known_hosts
+          ssh-keyscan -p ${{ env.DEPLOY_PORT }} ${{ env.DEPLOY_HOST }} >> ~/.ssh/known_hosts
 
       - name: Create directory structure on server
         run: |
-          ssh root@83.166.246.71 /bin/bash << 'EOF'
+          ssh -p ${{ env.DEPLOY_PORT }} ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }} /bin/bash << 'EOF'
           mkdir -p ~/airbnb
           EOF
 
       - name: Stop existing application
         run: |
-          ssh root@83.166.246.71 /bin/bash << 'EOF'
+          ssh -p ${{ env.DEPLOY_PORT }} ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }} /bin/bash << 'EOF'
           PID=$(pgrep -f airbnb.jar || true)
           if [ -n "$PID" ]; then
             kill -9 $PID
@@ -85,11 +88,11 @@ jobs:
           EOF
 
       - name: Upload JAR to server
-        run: scp ./artifact/airbnb-0.1.jar root@83.166.246.71:~/airbnb/airbnb.jar
+        run: scp -P ${{ env.DEPLOY_PORT }} ./artifact/airbnb-0.1.jar ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }}:~/airbnb/airbnb.jar
 
       - name: Start application
         run: |
-          ssh root@83.166.246.71 /bin/bash << 'EOF'
+          ssh -p ${{ env.DEPLOY_PORT }} ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }} /bin/bash << 'EOF'
           cd ~/airbnb
           _JAVA_OPTIONS=""
           nohup java -Xmx512m -Xms256m -jar airbnb.jar --spring.profiles.active=prod > airbnb.log 2>&1 &
@@ -105,23 +108,23 @@ jobs:
           mkdir -p ~/.ssh
           printf "%s\n" "${{ secrets.DEPLOY_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan 83.166.246.71 >> ~/.ssh/known_hosts
+          ssh-keyscan -p ${{ env.DEPLOY_PORT }} ${{ env.DEPLOY_HOST }} >> ~/.ssh/known_hosts
 
       - name: Check application process
         run: |
-          ssh root@83.166.246.71 /bin/bash << 'EOF'
+          ssh -p ${{ env.DEPLOY_PORT }} ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }} /bin/bash << 'EOF'
           ps aux | grep airbnb.jar | grep -v grep
           EOF
 
       - name: Check application logs
         run: |
-          ssh root@83.166.246.71 /bin/bash << 'EOF'
+          ssh -p ${{ env.DEPLOY_PORT }} ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }} /bin/bash << 'EOF'
           tail -20 ~/airbnb/airbnb.log
           EOF
 
       - name: Check health endpoint
         run: |
           sleep 30
-          ssh root@83.166.246.71 /bin/bash << 'EOF'
+          ssh -p ${{ env.DEPLOY_PORT }} ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }} /bin/bash << 'EOF'
           curl -s -o /dev/null -w 'Health Check: %{http_code}\n' localhost:${{ env.SERVER_PORT }}/health
           EOF
