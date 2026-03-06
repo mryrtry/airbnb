@@ -1,0 +1,617 @@
+{
+  "info": {
+    "name": "Airbnb API — все флоу (гость, владелец, админ)",
+    "description": "Коллекция для прохождения всех сценариев: регистрация, листинги, бронирования, окна разрешения споров, уведомления.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:9000" },
+    { "key": "accessToken", "value": "" },
+    { "key": "refreshToken", "value": "" },
+    { "key": "listingId", "value": "" },
+    { "key": "bookingId", "value": "" },
+    { "key": "resolutionId", "value": "" },
+    { "key": "notificationId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Health check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/health",
+            "description": "Проверка доступности сервиса."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register (owner)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var j = pm.response.json();",
+                  "if (j.tokens) {",
+                  "  pm.collectionVariables.set('accessToken', j.tokens.accessToken);",
+                  "  pm.collectionVariables.set('refreshToken', j.tokens.refreshToken);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"owner1\",\n  \"email\": \"owner@example.com\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/register",
+            "description": "Регистрация пользователя-владельца. После ответа токены сохраняются в переменные коллекции."
+          }
+        },
+        {
+          "name": "Register (guest)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var j = pm.response.json();",
+                  "if (j.tokens) {",
+                  "  pm.collectionVariables.set('accessToken', j.tokens.accessToken);",
+                  "  pm.collectionVariables.set('refreshToken', j.tokens.refreshToken);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"guest1\",\n  \"email\": \"guest@example.com\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/register",
+            "description": "Регистрация гостя. Токены сохраняются в переменные."
+          }
+        },
+        {
+          "name": "Login (owner)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var j = pm.response.json();",
+                  "if (j.tokens) {",
+                  "  pm.collectionVariables.set('accessToken', j.tokens.accessToken);",
+                  "  pm.collectionVariables.set('refreshToken', j.tokens.refreshToken);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"owner1\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/login",
+            "description": "Вход под владельцем. Дальше запросы пойдут с его токеном."
+          }
+        },
+        {
+          "name": "Login (guest)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var j = pm.response.json();",
+                  "if (j.tokens) {",
+                  "  pm.collectionVariables.set('accessToken', j.tokens.accessToken);",
+                  "  pm.collectionVariables.set('refreshToken', j.tokens.refreshToken);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"guest1\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/login",
+            "description": "Вход под гостем."
+          }
+        },
+        {
+          "name": "Login (admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var j = pm.response.json();",
+                  "if (j.tokens) {",
+                  "  pm.collectionVariables.set('accessToken', j.tokens.accessToken);",
+                  "  pm.collectionVariables.set('refreshToken', j.tokens.refreshToken);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"password\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/login",
+            "description": "Вход под админом (создаётся при старте приложения: admin / password)."
+          }
+        },
+        {
+          "name": "Refresh token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var j = pm.response.json();",
+                  "if (j.accessToken) pm.collectionVariables.set('accessToken', j.accessToken);",
+                  "if (j.refreshToken) pm.collectionVariables.set('refreshToken', j.refreshToken);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{refreshToken}}\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/refresh",
+            "description": "Обновление access-токена по refresh-токену."
+          }
+        },
+        {
+          "name": "Validate token",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{accessToken}}\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/validate",
+            "description": "Проверка валидности токена; в ответе valid и username."
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{accessToken}}"}
+            ],
+            "url": "{{baseUrl}}/auth/logout",
+            "description": "Выход: инвалидация текущего токена. Требует авторизации."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Listings",
+      "item": [
+        {
+          "name": "Create listing",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var j = pm.response.json();",
+                  "if (j.id) pm.collectionVariables.set('listingId', j.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{accessToken}}"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Уютная квартира в центре\",\n  \"description\": \"2 комнаты, кухня, Wi-Fi\"\n}"
+            },
+            "url": "{{baseUrl}}/listings",
+            "description": "Создание объявления (владелец). Статус по умолчанию DRAFT. Сохраняет listingId."
+          }
+        },
+        {
+          "name": "Get all listings",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{accessToken}}"}],
+            "url": "{{baseUrl}}/listings?page=0&size=20",
+            "description": "Список объявлений с пагинацией. Можно добавить status=PUBLISHED и др. в query."
+          }
+        },
+        {
+          "name": "Get listing by id",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{accessToken}}"}],
+            "url": "{{baseUrl}}/listings/{{listingId}}",
+            "description": "Одно объявление по id (используется переменная listingId)."
+          }
+        },
+        {
+          "name": "Update listing (publish)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{accessToken}}"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"PUBLISHED\"\n}"
+            },
+            "url": "{{baseUrl}}/listings/{{listingId}}",
+            "description": "Обновление объявления; здесь — публикация (статус PUBLISHED)."
+          }
+        },
+        {
+          "name": "Delete listing",
+          "request": {
+            "method": "DELETE",
+            "header": [{"key": "Authorization", "value": "Bearer {{accessToken}}"}],
+            "url": "{{baseUrl}}/listings/{{listingId}}",
+            "description": "Удаление объявления по id."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Bookings",
+      "item": [
+        {
+          "name": "Create booking",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var j = pm.response.json();",
+                  "if (j.id) pm.collectionVariables.set('bookingId', j.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{accessToken}}"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"listingId\": {{listingId}}\n}"
+            },
+            "url": "{{baseUrl}}/bookings",
+            "description": "Создание заявки на бронирование (гость). Нужен опубликованный listingId. Сохраняет bookingId."
+          }
+        },
+        {
+          "name": "Get all bookings",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{accessToken}}"}],
+            "url": "{{baseUrl}}/bookings?page=0&size=20",
+            "description": "Список бронирований с пагинацией и фильтрами."
+          }
+        },
+        {
+          "name": "Get booking by id",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{accessToken}}"}],
+            "url": "{{baseUrl}}/bookings/{{bookingId}}",
+            "description": "Одно бронирование по id."
+          }
+        },
+        {
+          "name": "Decide booking (approve)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{accessToken}}"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"APPROVED\"\n}"
+            },
+            "url": "{{baseUrl}}/bookings/{{bookingId}}/decide",
+            "description": "Решение владельца: одобрить заявку (APPROVED или REJECTED)."
+          }
+        },
+        {
+          "name": "Decide booking (reject)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{accessToken}}"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"REJECTED\"\n}"
+            },
+            "url": "{{baseUrl}}/bookings/{{bookingId}}/decide",
+            "description": "Решение владельца: отклонить заявку."
+          }
+        },
+        {
+          "name": "Check-in",
+          "request": {
+            "method": "PUT",
+            "header": [{"key": "Authorization", "value": "Bearer {{accessToken}}"}],
+            "url": "{{baseUrl}}/bookings/{{bookingId}}/check-in",
+            "description": "Фиксация въезда гостя (статус CHECKED_IN)."
+          }
+        },
+        {
+          "name": "Check-out",
+          "request": {
+            "method": "PUT",
+            "header": [{"key": "Authorization", "value": "Bearer {{accessToken}}"}],
+            "url": "{{baseUrl}}/bookings/{{bookingId}}/check-out",
+            "description": "Фиксация выезда гостя (статус CHECKED_OUT). После выезда может автоматически открыться окно разрешения споров."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Resolutions",
+      "item": [
+        {
+          "name": "Open resolution for booking",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var j = pm.response.json();",
+                  "if (j.id) pm.collectionVariables.set('resolutionId', j.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Authorization", "value": "Bearer {{accessToken}}"}],
+            "url": "{{baseUrl}}/resolutions/open/{{bookingId}}",
+            "description": "Открыть окно разрешения споров по бронированию (если не открыто автоматически после checkout). Сохраняет resolutionId."
+          }
+        },
+        {
+          "name": "Get all resolutions",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{accessToken}}"}],
+            "url": "{{baseUrl}}/resolutions?page=0&size=20",
+            "description": "Список окон разрешения с пагинацией и фильтрами."
+          }
+        },
+        {
+          "name": "Get resolution by id",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{accessToken}}"}],
+            "url": "{{baseUrl}}/resolutions/{{resolutionId}}",
+            "description": "Окно разрешения по id."
+          }
+        },
+        {
+          "name": "Get resolution by booking id",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{accessToken}}"}],
+            "url": "{{baseUrl}}/resolutions/booking/{{bookingId}}",
+            "description": "Окно разрешения по id бронирования."
+          }
+        },
+        {
+          "name": "Request money",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{accessToken}}"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amountRequested\": 150.50\n}"
+            },
+            "url": "{{baseUrl}}/resolutions/{{resolutionId}}/request-money",
+            "description": "Владелец запрашивает компенсацию с гостя (сумма в amountRequested)."
+          }
+        },
+        {
+          "name": "Respond pay",
+          "request": {
+            "method": "PUT",
+            "header": [{"key": "Authorization", "value": "Bearer {{accessToken}}"}],
+            "url": "{{baseUrl}}/resolutions/{{resolutionId}}/respond-pay",
+            "description": "Гость согласен оплатить (конфликт урегулирован)."
+          }
+        },
+        {
+          "name": "Respond refuse",
+          "request": {
+            "method": "PUT",
+            "header": [{"key": "Authorization", "value": "Bearer {{accessToken}}"}],
+            "url": "{{baseUrl}}/resolutions/{{resolutionId}}/respond-refuse",
+            "description": "Гость отказывается платить."
+          }
+        },
+        {
+          "name": "Escalate",
+          "request": {
+            "method": "PUT",
+            "header": [{"key": "Authorization", "value": "Bearer {{accessToken}}"}],
+            "url": "{{baseUrl}}/resolutions/{{resolutionId}}/escalate",
+            "description": "Владелец эскалирует после отказа гостя."
+          }
+        },
+        {
+          "name": "Complaint",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{accessToken}}"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Жалоба на поведение гостя\"\n}"
+            },
+            "url": "{{baseUrl}}/resolutions/{{resolutionId}}/complaint",
+            "description": "Владелец подаёт жалобу (без запроса денег)."
+          }
+        },
+        {
+          "name": "Close resolution (admin)",
+          "request": {
+            "method": "PUT",
+            "header": [{"key": "Authorization", "value": "Bearer {{accessToken}}"}],
+            "url": "{{baseUrl}}/resolutions/{{resolutionId}}/close",
+            "description": "Закрытие окна разрешения (только админ)."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Notifications",
+      "item": [
+        {
+          "name": "Get all notifications",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{accessToken}}"}],
+            "url": "{{baseUrl}}/notifications?page=0&size=20",
+            "description": "Список уведомлений текущего пользователя. Можно ?unreadOnly=true."
+          }
+        },
+        {
+          "name": "Get unread count",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{accessToken}}"}],
+            "url": "{{baseUrl}}/notifications/unread-count",
+            "description": "Количество непрочитанных уведомлений."
+          }
+        },
+        {
+          "name": "Get notification by id",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{accessToken}}"}],
+            "url": "{{baseUrl}}/notifications/{{notificationId}}",
+            "description": "Одно уведомление по id."
+          }
+        },
+        {
+          "name": "Mark notification read",
+          "request": {
+            "method": "PATCH",
+            "header": [{"key": "Authorization", "value": "Bearer {{accessToken}}"}],
+            "url": "{{baseUrl}}/notifications/{{notificationId}}/read",
+            "description": "Отметить уведомление как прочитанное."
+          }
+        },
+        {
+          "name": "Mark all notifications read",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Authorization", "value": "Bearer {{accessToken}}"}],
+            "url": "{{baseUrl}}/notifications/mark-all-read",
+            "description": "Отметить все уведомления текущего пользователя как прочитанные."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "Get me",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{accessToken}}"}],
+            "url": "{{baseUrl}}/users/me",
+            "description": "Текущий пользователь (по токену)."
+          }
+        },
+        {
+          "name": "Get permissions",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{accessToken}}"}],
+            "url": "{{baseUrl}}/users/permissions",
+            "description": "Список прав текущего пользователя."
+          }
+        },
+        {
+          "name": "Get all users (admin)",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{accessToken}}"}],
+            "url": "{{baseUrl}}/users?page=0&size=20",
+            "description": "Список пользователей (только для админа)."
+          }
+        },
+        {
+          "name": "Get user by id (admin)",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{accessToken}}"}],
+            "url": "{{baseUrl}}/users/1",
+            "description": "Пользователь по id (админ). Замените 1 на нужный id."
+          }
+        }
+      ]
+    }
+  ]
+}
