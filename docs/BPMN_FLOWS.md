@@ -16,7 +16,7 @@
 
 | BPMN (название / id) | Реализация |
 |----------------------|------------|
-| **Опубликовать объявление** (Event_0xrs54c → Activity_1lmw3cm) | `ListingController.update(id, status=PUBLISHED)`, `ListingServiceImpl.update()`. Уведомление владельцу о публикации в BPMN есть, в коде не реализовано (самоуведомление не обязательно). |
+| **Опубликовать объявление** (Event_0xrs54c → Activity_1lmw3cm) | `ListingController.update(id, status=PUBLISHED)`, `ListingServiceImpl.update()`. При переходе в PUBLISHED владельцу отправляется уведомление `LISTING_PUBLISHED` (Activity_1r7wjdn, Activity_0qi5hke). |
 | **Найти жилье → Список доступного жилья** (Event_18m7ui0 → Activity_0txalis) | `GET /listings?status=PUBLISHED` — клиент должен передать `status=PUBLISHED` для «доступного» жилья. |
 | **Подать заявку / Зарегистрировать заявку** (Activity_1v216a5, Activity_0jr0t65) | `POST /bookings`, `BookingServiceImpl.create()` → уведомление владельцу `BOOKING_APPLIED`. |
 | **Уведомить владельца** (Activity_0mbm8ir) | Реализовано через `NotificationService.notifyUser(ownerId, BOOKING_APPLIED, ...)`. |
@@ -34,19 +34,14 @@
 | **Попросить Airbnb вмешаться** (Owner_EscalateAfterRefusal) | `PUT /resolutions/{id}/escalate` (только из REFUSED) → статус ESCALATED, гостю `RESOLUTION_ESCALATED`. |
 | **Зафиксировать жалобу / Уведомить владельца о жалобе** (Sys_RecordIssue, Activity_00i2mqr) | Реализовано как `recordComplaint` → `RESOLUTION_COMPLAINT_RECORDED`. |
 | **Принять оплату / Уведомить владельца о зафиксированной оплате** (Sys_ReceivePayment, Activity_03b40fh) | `respondPay()` → `RESOLUTION_PAYMENT_RECEIVED`. |
-| **Не отвечает 14 дней** (Event_027b8xy) → **Закрыть окно / Уведомить о закрытии** (Activity_1kv4q0h, Activity_0nrufzo) | `ResolutionScheduler` (cron) вызывает `ResolutionService.closeExpiredWindows()`; владельцу `RESOLUTION_WINDOW_CLOSED_AUTO`. |
-| **Закрытие окна вручную** | `PUT /resolutions/{id}/close` (только ALL_RESOLUTION_UPDATE) → `RESOLUTION_WINDOW_CLOSED`. |
+| **Не отвечает 14 дней** (Event_027b8xy) → **Закрыть окно / Уведомить о закрытии** (Activity_1kv4q0h, Activity_0nrufzo) | `ResolutionScheduler` (cron) вызывает `ResolutionService.closeExpiredWindows()`: закрываются только окна в статусе **OPEN** (владелец не запросил компенсацию и не подал жалобу), у которых `openedAt` старше 14 дней; владельцу `RESOLUTION_WINDOW_CLOSED_AUTO`. Окна, в которых владелец уже действовал (MONEY_REQUESTED, REFUSED и т.д.), по таймеру не закрываются. |
+| **Закрытие окна вручную** | `PUT /resolutions/{id}/close`: админ (ALL_RESOLUTION_UPDATE) — всегда, владелец — только из статуса REFUSED («закрыть без эскалации», Gw_GuestRefused → «Нет»). Владельцу при закрытии без эскалации — `RESOLUTION_WINDOW_CLOSED_BY_OWNER`, при закрытии админом — `RESOLUTION_WINDOW_CLOSED`. |
+| **Существенное происшествие?** (Gateway_0guf1pf) | Админ вызывает `PUT /resolutions/{id}/resolve-escalation` с телом `{"substantialIncident": true/false}`. |
+| **Назначить Гостю обязательную выплату** (Activity_0mozg5p), **Уведомить Гостя об обязательной выплате** (Activity_1t1yyy6) | При `substantialIncident: true` окно переводится в статус MANDATORY_PAYMENT, гостю — `RESOLUTION_MANDATORY_PAYMENT_ASSIGNED`. Гость может оплатить через `PUT /resolutions/{id}/respond-pay` (тот же эндпоинт, что и при добровольной оплате). |
+| **Уведомить владельца об урегулировании конфликта** (Activity_1w8qgok) | При `substantialIncident: false` окно закрывается, владельцу — `RESOLUTION_RESOLVED_WITHOUT_PAYMENT`. |
+| **Есть смысл продолжать?** (Gw_GuestRefused) | Владелец либо вызывает `PUT /resolutions/{id}/escalate` («Да»), либо `PUT /resolutions/{id}/close` из статуса REFUSED («Нет» — закрыть без эскалации). |
 
-### 1.2 Не покрытые или упрощённые элементы BPMN
-
-| BPMN | Проблема |
-|------|----------|
-| **Существенное происшествие?** (Gateway_0guf1pf) | В BPMN после эскалации система ветвится: «Да» → назначить гостю обязательную выплату и уведомить; «Нет» → уведомить владельца об урегулировании. В коде ветвление не реализовано: после эскалации только статус ESCALATED и уведомление гостю. Решение «существенное ли происшествие» могло бы делать админ или отдельный сервис (будущее расширение). |
-| **Назначить Гостю обязательную выплату** (Activity_0mozg5p), **Уведомить Гостя об обязательной выплате** (Activity_1t1yyy6) | Нет отдельного статуса «обязательная выплата» и нет принудительного сценария оплаты — только добровольный ответ гостя (pay/refuse). |
-| **Уведомить владельца об урегулировании конфликта** (Activity_1w8qgok) при ответе «Нет» на существенное происшествие | Нет автоматического уведомления владельцу «конфликт урегулирован без взыскания» после эскалации. |
-| **Есть смысл продолжать?** (Gw_GuestRefused) | В BPMN владелец решает: продолжать (эскалация) или нет (конец). В коде владелец явно вызывает эскалацию; «не продолжать» = просто не вызывать `escalate`. Явного «закрыть без эскалации» из состояния REFUSED нет (можно добавить закрытие окна или оставить как есть). |
-
-Итог: основные сценарии (бронирование, решение, заезд/выезд, окно резолюции, запрос денег, оплата/отказ, эскалация, жалоба, авто-закрытие по таймеру) покрыты. Не покрыты: автоматическое ветвление после эскалации и сценарий «обязательная выплата».
+Итог: все элементы BPMN покрыты реализацией без упрощений.
 
 ---
 
@@ -81,12 +76,10 @@
    `GET /notifications` — свои уведомления, например BOOKING_APPROVED или BOOKING_REJECTED.
 
 4. **После одобрения — заезд**  
-   `PUT /bookings/{id}/check-in`.  
-   Владелец получает `BOOKING_CHECKED_IN`.
+   `PUT /bookings/{id}/check-in`. Выполнить может только **гость этого бронирования** или админ (ALL_BOOKING_UPDATE). Владелец получает `BOOKING_CHECKED_IN`.
 
 5. **Выезд**  
-   `PUT /bookings/{id}/check-out`.  
-   Владелец получает `BOOKING_CHECKED_OUT`; система автоматически открывает окно резолюции для этого бронирования.
+   `PUT /bookings/{id}/check-out`. Аналогично: только гость этого бронирования или админ. Владелец получает `BOOKING_CHECKED_OUT`; система автоматически открывает окно резолюции для этого бронирования.
 
 6. **Уведомление о запросе компенсации**  
    Владелец вызывает `PUT /resolutions/{id}/request-money`. Гость получает `RESOLUTION_MONEY_REQUESTED`.  
@@ -143,12 +136,13 @@
   `PUT /bookings/{id}/check-in`, `PUT /bookings/{id}/check-out` (ALL_BOOKING_UPDATE).
 
 - **Закрытие окна резолюции**  
-  `PUT /resolutions/{id}/close` (ALL_RESOLUTION_UPDATE) → владельцу уходит `RESOLUTION_WINDOW_CLOSED`.
+  `PUT /resolutions/{id}/close` (ALL_RESOLUTION_UPDATE или владелец из REFUSED) → владельцу `RESOLUTION_WINDOW_CLOSED` или `RESOLUTION_WINDOW_CLOSED_BY_OWNER`.
+
+- **Решение по эскалации (шлюз «Существенное происшествие?»)**  
+  `PUT /resolutions/{id}/resolve-escalation` с телом `{"substantialIncident": true/false}` (только ALL_RESOLUTION_UPDATE). При `true` — статус MANDATORY_PAYMENT, гостю `RESOLUTION_MANDATORY_PAYMENT_ASSIGNED`; при `false` — окно закрывается, владельцу `RESOLUTION_RESOLVED_WITHOUT_PAYMENT`.
 
 - **Просмотр чужих уведомлений**  
   `GET /notifications` с учётом фильтра; при ALL_NOTIFICATION_READ доступны уведомления других пользователей (контроллер подставляет userId только для обычного пользователя).
-
-Автоматическое «существенное происшествие» и назначение обязательной выплаты админ в текущей реализации не делает через отдельный API — можно расширить (например, отдельный endpoint «назначить обязательную выплату» после эскалации).
 
 ---
 
@@ -190,19 +184,19 @@
    BPMN подразумевает «список доступного жилья». В API фильтр по `status=PUBLISHED` есть; клиент передаёт `status=PUBLISHED` при поиске. Опционально: отдельный endpoint «доступные для бронирования» с фиксированным фильтром PUBLISHED.
 
 3. **Ветвление после эскалации (BPMN)**  
-   Шлюз «Существенное происшествие?» и сценарии обязательной выплаты / уведомления владельцу об урегулировании не реализованы. Расширение: роли «поддержка» и API для решения «да/нет» и назначения обязательной выплаты.
+   Реализовано: админ вызывает `PUT /resolutions/{id}/resolve-escalation` с `substantialIncident: true/false`; при true — обязательная выплата (MANDATORY_PAYMENT) и уведомление гостю, при false — закрытие и уведомление владельцу об урегулировании без взыскания.
 
 4. **Таймер 14 дней**  
-   Реализован в `ResolutionScheduler` и `ResolutionConstants.WINDOW_DAYS`; закрываются только окна в статусе OPEN. Окна в MONEY_REQUESTED или REFUSED по таймеру не закрываются — при необходимости уточнить в BPMN и доработать.
+   Реализован в `ResolutionScheduler` и `ResolutionConstants.WINDOW_DAYS`. Закрываются только окна в статусе OPEN (владелец не открыл/не задействовал окно — не запросил деньги и не подал жалобу), у которых `openedAt` старше 14 дней.
 
 5. **«Есть смысл продолжать?» (Gw_GuestRefused)**  
-   В коде владелец либо вызывает эскалацию (`PUT /resolutions/{id}/escalate`), либо нет. Явного действия «закрыть без эскалации» из состояния REFUSED нет — при желании можно добавить закрытие окна или оставить как есть.
+   Владелец либо вызывает эскалацию (`PUT /resolutions/{id}/escalate`), либо закрывает окно без эскалации (`PUT /resolutions/{id}/close` из статуса REFUSED) — владельцу уходит `RESOLUTION_WINDOW_CLOSED_BY_OWNER`.
 
 ---
 
 ## 5. Краткая сводка
 
-- **Покрытие BPMN:** основные шаги процесса (листинг, заявка, решение, заезд, выезд, окно резолюции, запрос денег, оплата/отказ, эскалация, жалоба, авто-закрытие по 14 дням, ручное закрытие) реализованы. Не реализованы: автоматическое ветвление «существенное происшествие» и сценарий обязательной выплаты (см. раздел 1.2).
+- **Покрытие BPMN:** все шаги процесса реализованы без упрощений: уведомление владельцу о публикации листинга; таймер 14 дней только для статуса OPEN (владелец не задействовал окно); закрытие владельцем без эскалации из REFUSED; шлюз «Существенное происшествие?» (resolve-escalation); обязательная выплата (MANDATORY_PAYMENT) и уведомление владельцу об урегулировании без взыскания.
 - **Доступ к ресурсам:** проверки «гость/владелец этого бронирования/листинга/окна» выполняются в *AccessService; списки бронирований и резолюций для не-админа ограничены участником.
 - **Сценарии по ролям:** документированы пошагово для гостя, владельца и админа с указанием эндпоинтов и ожидаемых уведомлений.
 - **Данные для следующего шага:** в уведомлениях сохраняются `relatedBookingId` и `relatedResolutionId` — клиент может брать `resolutionId` из уведомления для вызова respond-pay/respond-refuse без дополнительного запроса.

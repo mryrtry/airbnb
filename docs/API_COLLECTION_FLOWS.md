@@ -8,7 +8,7 @@
 - **Insomnia:** Import/Export → Import Data → Import from File → выберите JSON-файл коллекции (формат Postman v2.1 поддерживается).
 - **Thunder Client (VS Code):** Import → Postman → выберите файл коллекции.
 
-После импорта в коллекции появятся папки: Health, Auth, Listings, Bookings, Resolutions, Notifications, Users.
+После импорта в коллекции появятся папки: Health, Auth, Listings, Bookings, Resolutions, Notifications, Users. Все эндпоинты API покрыты запросами коллекции (включая PUT /users/{id}, PUT /users/{id}/roles, DELETE /users/{id}).
 
 ## Переменные коллекции
 
@@ -21,6 +21,7 @@
 | `bookingId`     | Id бронирования. Заполняется после **Create booking** и используется в decide, check-in, check-out, resolutions. |
 | `resolutionId`  | Id окна разрешения споров. Заполняется после **Open resolution for booking** (или берётся из **Get resolution by booking id**). |
 | `notificationId`| Id уведомления. Заполняется вручную из ответа **Get all notifications** при необходимости (для Get/Mark read по одному). |
+| `userId`        | Id пользователя. Для запросов Get/Update/Delete user задаётся вручную или из ответа **Get all users**. |
 
 Важно: для сценариев с бронированием и резолюциями нужно выполнять запросы **по порядку**, чтобы `listingId` и `bookingId` подставились автоматически. Иначе вручную задайте их в переменных коллекции (например, после просмотра ответа списка листингов/бронирований).
 
@@ -53,8 +54,8 @@
 ### 5. Гость: въезд и выезд
 
 11. **Auth → Login (guest)**.
-12. **Bookings → Check-in** — фиксация въезда.
-13. **Bookings → Check-out** — фиксация выезда. После выезда по этому бронированию может автоматически открыться окно разрешения споров (зависит от конфигурации приложения).
+12. **Bookings → Check-in** — фиксация въезда. Выполнить может только **гость этого бронирования** или админ (ALL_BOOKING_UPDATE); владелец не может.
+13. **Bookings → Check-out** — фиксация выезда (также только гость или админ). После выезда по этому бронированию может автоматически открыться окно разрешения споров (зависит от конфигурации приложения).
 
 ### 6. Окно разрешения споров (resolution)
 
@@ -63,13 +64,15 @@
 16. **Resolutions → Request money** — владелец запрашивает компенсацию (в теле указать `amountRequested`).
 17. **Auth → Login (guest)**.
 18. **Resolutions → Respond pay** или **Respond refuse** — гость соглашается оплатить или отказывается.
-19. При отказе: **Auth → Login (owner)** → **Resolutions → Escalate** — эскалация.
-20. Альтернатива запросу денег: **Resolutions → Complaint** — владелец подаёт жалобу (без суммы).
+19. При отказе: **Auth → Login (owner)** — затем либо **Resolutions → Escalate** (эскалация), либо **Resolutions → Close resolution (admin or owner from REFUSED)** (закрыть без эскалации; владельцу уйдёт RESOLUTION_WINDOW_CLOSED_BY_OWNER).
+20. После эскалации: **Auth → Login (admin)** → **Resolutions → Resolve escalation (admin)** с телом `{"substantialIncident": true}` (назначить обязательную выплату гостю) или `{"substantialIncident": false}` (урегулировать без взыскания, уведомить владельца).
+21. Если назначена обязательная выплата: **Auth → Login (guest)** → **Resolutions → Respond pay** — гость оплачивает (допускается из статуса MANDATORY_PAYMENT).
+22. Альтернатива запросу денег: **Resolutions → Complaint** — владелец подаёт жалобу (без суммы).
 
 ### 7. Админ: закрытие окна разрешения
 
-21. **Auth → Login (admin)** — вход под `admin` / `password` (пользователь создаётся при старте приложения).
-22. **Resolutions → Close resolution (admin)** — закрытие окна разрешения.
+23. **Auth → Login (admin)** — вход под `admin` / `password` (пользователь создаётся при старте приложения).
+24. **Resolutions → Close resolution (admin or owner from REFUSED)** — закрытие окна (админ может закрыть любое; владелец — только из REFUSED).
 
 ### 8. Уведомления
 
@@ -91,12 +94,61 @@
 При необходимости (под админом):
 
 32. **Users → Get all users (admin)** — список пользователей.
-33. **Users → Get user by id (admin)** — пользователь по id (в URL замените `1` на нужный id).
+33. **Users → Get user by id (admin)** — пользователь по id (подставьте `{{userId}}` или id вручную).
+34. **Users → Update user (admin)** — обновление профиля (username, email, password). PUT `/users/{{userId}}`.
+35. **Users → Update user roles (admin)** — обновление ролей. PUT `/users/{{userId}}/roles`, тело: `{"roles": ["ROLE_USER", "ROLE_ADMIN"]}`.
+36. **Users → Delete user (admin)** — удаление пользователя. DELETE `/users/{{userId}}`.
 
 ## Краткая схема по ролям
 
-- **Гость:** Register/Login → Create booking → Check-in → Check-out → (Resolutions: respond-pay / respond-refuse) → Notifications.
-- **Владелец:** Register/Login → Create listing → Update listing (publish) → Decide booking → (Resolutions: open, request-money, escalate, complaint).
-- **Админ:** Login (admin) → Resolutions: close; Users: get all, get by id.
+- **Гость:** Register/Login → Create booking → Check-in → Check-out (только гость этого бронирования или админ) → (Resolutions: respond-pay / respond-refuse; при обязательной выплате — respond-pay из MANDATORY_PAYMENT) → Notifications.
+- **Владелец:** Register/Login → Create listing → Update listing (publish) → Decide booking → (Resolutions: open, request-money, escalate или close из REFUSED, complaint).
+- **Админ:** Login (admin) → Resolutions: close, resolve-escalation (существенное происшествие да/нет); Users: get all, get by id.
 
 Запуск всей коллекции подряд (Run collection) возможен только с учётом порядка и переключения пользователей: после каждого Login подставляется новый `accessToken`, поэтому следующие запросы выполняются от имени последнего залогиненного пользователя. Для полного прохождения всех флоу удобнее выполнять запросы по описанному выше порядку вручную, переключая логин при смене роли.
+
+## Справочник эндпоинтов (для сверки с кодом и коллекцией)
+
+| Метод | Путь | Права / примечание |
+|-------|------|---------------------|
+| GET | /health | Публичный |
+| POST | /auth/register | Публичный |
+| POST | /auth/login | Публичный |
+| POST | /auth/refresh | Публичный |
+| POST | /auth/validate | Публичный |
+| POST | /auth/logout | isAuthenticated() |
+| GET | /users | ALL_USER_READ |
+| GET | /users/me | isAuthenticated() |
+| GET | /users/permissions | isAuthenticated() |
+| GET | /users/{id} | ALL_USER_READ |
+| GET | /users/username/{username} | ALL_USER_READ |
+| PUT | /users/{id} | ALL_USER_UPDATE |
+| PUT | /users/{id}/roles | ALL_USER_UPDATE |
+| DELETE | /users/{id} | ALL_USER_DELETE |
+| POST | /listings | LISTING_CREATE |
+| GET | /listings | LISTING_READ или ALL_LISTING_READ |
+| GET | /listings/{id} | LISTING_READ или ALL_LISTING_READ |
+| PUT | /listings/{id} | LISTING_UPDATE или ALL_LISTING_UPDATE |
+| DELETE | /listings/{id} | LISTING_DELETE или ALL_LISTING_DELETE |
+| POST | /bookings | BOOKING_CREATE |
+| GET | /bookings | BOOKING_READ или ALL_BOOKING_READ |
+| GET | /bookings/{id} | BOOKING_READ или ALL_BOOKING_READ |
+| PUT | /bookings/{id}/decide | BOOKING_DECIDE или ALL_BOOKING_UPDATE |
+| PUT | /bookings/{id}/check-in | BOOKING_READ или ALL_BOOKING_UPDATE; доступ: только гость этого бронирования или админ |
+| PUT | /bookings/{id}/check-out | то же |
+| POST | /resolutions/open/{bookingId} | RESOLUTION_READ или ALL_RESOLUTION_UPDATE |
+| GET | /resolutions | RESOLUTION_READ или ALL_RESOLUTION_READ |
+| GET | /resolutions/{id} | RESOLUTION_READ или ALL_RESOLUTION_READ |
+| GET | /resolutions/booking/{bookingId} | RESOLUTION_READ или ALL_RESOLUTION_READ |
+| PUT | /resolutions/{id}/request-money | RESOLUTION_REQUEST_MONEY или ALL_RESOLUTION_UPDATE |
+| PUT | /resolutions/{id}/respond-pay | RESOLUTION_RESPOND или ALL_RESOLUTION_UPDATE |
+| PUT | /resolutions/{id}/respond-refuse | RESOLUTION_RESPOND или ALL_RESOLUTION_UPDATE |
+| PUT | /resolutions/{id}/escalate | RESOLUTION_ESCALATE или ALL_RESOLUTION_UPDATE |
+| PUT | /resolutions/{id}/complaint | RESOLUTION_COMPLAINT или ALL_RESOLUTION_UPDATE |
+| PUT | /resolutions/{id}/close | RESOLUTION_READ или ALL_RESOLUTION_UPDATE |
+| PUT | /resolutions/{id}/resolve-escalation | ALL_RESOLUTION_UPDATE; тело: substantialIncident (true/false) |
+| GET | /notifications | NOTIFICATION_READ или ALL_NOTIFICATION_READ |
+| GET | /notifications/unread-count | то же |
+| GET | /notifications/{id} | то же |
+| PATCH | /notifications/{id}/read | то же |
+| POST | /notifications/mark-all-read | то же |
