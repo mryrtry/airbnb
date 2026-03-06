@@ -1,0 +1,13 @@
+/target
+
+.gitattributes
+
+mvnw
+
+mvnw.cmd
+
+/data
+
+/.mvn
+
+/.idea

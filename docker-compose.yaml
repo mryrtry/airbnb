@@ -1,0 +1,22 @@
+version: "3.9"
+name: airbnb-infra
+
+services:
+  sql-db:
+    image: postgres:16
+    container_name: sql-db
+    volumes:
+      - ./data/postgres/data:/var/lib/postgresql/data
+    ports:
+      - "5434:5432"
+    environment:
+      POSTGRES_USER: "user"
+      POSTGRES_PASSWORD: "password"
+      POSTGRES_DB: "airbnb"
+    healthcheck:
+      test: [ "CMD", "pg_isready", "-q", "-d", "${POSTGRES_DB}", "-U", "${POSTGRES_USER}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
