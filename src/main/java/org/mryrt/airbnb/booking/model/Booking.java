@@ -14,6 +14,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.mryrt.airbnb.model.AuditableEntity;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
@@ -38,6 +39,14 @@ public class Booking extends AuditableEntity {
     @Column(nullable = false)
     @Builder.Default
     private BookingStatus status = BookingStatus.APPLIED;
+
+    /** Дата заезда (включительно). В дату выезда может заехать следующий гость. */
+    @Column(name = "check_in_date", nullable = false)
+    private LocalDate checkInDate;
+
+    /** Дата выезда (включительно; ночь перед этой датой — последняя занятая). В эту дату может заехать другой. */
+    @Column(name = "check_out_date", nullable = false)
+    private LocalDate checkOutDate;
 
     @Column(name = "applied_at", nullable = false)
     private LocalDateTime appliedAt;

@@ -2,6 +2,8 @@
 
 Коллекция **`docs/airbnb-flows.postman_collection.json`** содержит запросы ко всем основным сценариям: гость, владелец, админ — регистрация, листинги, бронирования, окна разрешения споров, уведомления.
 
+**Подробное описание всех повторяемых флоу, кто какую ручку дергает и что ожидать (приколы, 403, уведомления) — см. [POSTMAN_FLOWS.md](./POSTMAN_FLOWS.md).**
+
 ## Импорт коллекции
 
 - **Postman:** File → Import → загрузите `airbnb-flows.postman_collection.json`. Либо перетащите файл в окно Postman.
@@ -130,7 +132,7 @@
 | GET | /listings/{id} | LISTING_READ или ALL_LISTING_READ |
 | PUT | /listings/{id} | LISTING_UPDATE или ALL_LISTING_UPDATE |
 | DELETE | /listings/{id} | LISTING_DELETE или ALL_LISTING_DELETE |
-| POST | /bookings | BOOKING_CREATE |
+| POST | /bookings | BOOKING_CREATE. Тело: listingId, checkInDate, checkOutDate (ISO). Пересечение дат у одного гостя по одному объявлению → 400. При одобрении одной заявки остальные с теми же датами отклоняются, уведомление BOOKING_REJECTED_ANOTHER_APPROVED. |
 | GET | /bookings | BOOKING_READ или ALL_BOOKING_READ |
 | GET | /bookings/{id} | BOOKING_READ или ALL_BOOKING_READ |
 | PUT | /bookings/{id}/decide | BOOKING_DECIDE или ALL_BOOKING_UPDATE |

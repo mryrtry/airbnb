@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.mryrt.airbnb.booking.model.BookingStatus;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Getter
@@ -20,6 +21,8 @@ public class BookingDto {
     private Long listingId;
     private Long guestId;
     private BookingStatus status;
+    private LocalDate checkInDate;
+    private LocalDate checkOutDate;
     private LocalDateTime appliedAt;
     private LocalDateTime checkInAt;
     private LocalDateTime checkOutAt;

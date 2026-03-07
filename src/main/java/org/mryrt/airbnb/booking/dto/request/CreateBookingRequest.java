@@ -6,6 +6,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.LocalDate;
+
 @Getter
 @Setter
 @NoArgsConstructor
@@ -14,4 +16,10 @@ public class CreateBookingRequest {
 
     @NotNull(message = "Booking.listingId не может быть пустым")
     private Long listingId;
+
+    @NotNull(message = "Дата въезда обязательна")
+    private LocalDate checkInDate;
+
+    @NotNull(message = "Дата выезда обязательна")
+    private LocalDate checkOutDate;
 }

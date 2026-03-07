@@ -25,6 +25,9 @@ public class DefaultNotificationMessageProvider implements NotificationMessagePr
             case BOOKING_REJECTED -> NotificationContent.builder()
                     .title(NotificationMessageTemplates.BOOKING_REJECTED_TITLE)
                     .body(String.format(NotificationMessageTemplates.BOOKING_REJECTED_BODY, context.get("bookingId"))).build();
+            case BOOKING_REJECTED_ANOTHER_APPROVED -> NotificationContent.builder()
+                    .title(NotificationMessageTemplates.BOOKING_REJECTED_ANOTHER_APPROVED_TITLE)
+                    .body(String.format(NotificationMessageTemplates.BOOKING_REJECTED_ANOTHER_APPROVED_BODY, context.get("bookingId"), context.get("listingId"))).build();
             case BOOKING_CHECKED_IN -> NotificationContent.builder()
                     .title(NotificationMessageTemplates.BOOKING_CHECKED_IN_TITLE)
                     .body(String.format(NotificationMessageTemplates.BOOKING_CHECKED_IN_BODY, context.get("bookingId"))).build();

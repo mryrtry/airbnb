@@ -14,7 +14,10 @@ public enum GlobalErrorMessage implements ErrorMessage {
 	SOURCE_NOT_FOUND(HttpStatus.NOT_FOUND, "Ресурс '%s' не был найден"),
 	CANNOT_ACCESS_SOURCE(HttpStatus.UNAUTHORIZED, "Ресурс '%s' с ID: '%s' не может быть удалён или изменён вами"),
 	ENTITY_IN_USE(HttpStatus.BAD_REQUEST, "Невозможно удалить ресурс '%s' с ID: '%s', так как он связан с другим ресурсом '%s'"),
-	MUST_BE_UNIQUE(HttpStatus.BAD_REQUEST, "Ресурс '%s' должен быть уникальным");
+	MUST_BE_UNIQUE(HttpStatus.BAD_REQUEST, "Ресурс '%s' должен быть уникальным"),
+	BOOKING_CHECK_OUT_AFTER_CHECK_IN(HttpStatus.BAD_REQUEST, "Дата выезда должна быть позже даты въезда"),
+	BOOKING_GUEST_OVERLAPPING_DATES(HttpStatus.BAD_REQUEST, "У вас уже есть заявка на этот объект с пересекающимися датами. Один гость не может иметь более одной брони на одни и те же даты по одному объявлению."),
+	BOOKING_LISTING_OCCUPIED_DATES(HttpStatus.BAD_REQUEST, "На эти даты уже одобрена или занята другая бронь по этому объявлению. В одну дату может заехать только один гость.");
 
 
 	private final HttpStatus httpStatus;

@@ -26,11 +26,16 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Map;
 
 import static org.mryrt.airbnb.event.EventType.CREATED;
 import static org.mryrt.airbnb.event.EventType.UPDATED;
+import static org.mryrt.airbnb.exception.message.GlobalErrorMessage.BOOKING_CHECK_OUT_AFTER_CHECK_IN;
+import static org.mryrt.airbnb.exception.message.GlobalErrorMessage.BOOKING_GUEST_OVERLAPPING_DATES;
+import static org.mryrt.airbnb.exception.message.GlobalErrorMessage.BOOKING_LISTING_OCCUPIED_DATES;
 import static org.mryrt.airbnb.exception.message.GlobalErrorMessage.ID_MUST_BE_POSITIVE;
 import static org.mryrt.airbnb.exception.message.GlobalErrorMessage.MUST_BE_NOT_NULL;
 import static org.mryrt.airbnb.exception.message.GlobalErrorMessage.SOURCE_WITH_ID_NOT_FOUND;
@@ -58,11 +63,21 @@ public class BookingServiceImpl implements BookingService {
     @Override
     @Transactional
     public BookingDto create(CreateBookingRequest request) {
+        if (request.getCheckOutDate() == null || !request.getCheckOutDate().isAfter(request.getCheckInDate())) {
+            throw new ServiceException(BOOKING_CHECK_OUT_AFTER_CHECK_IN);
+        }
         Listing listing = listingService.getEntity(request.getListingId());
         Long guestId = userService.getAuthenticatedUser().getId();
+        if (bookingRepository.existsOverlappingByGuestAndListing(guestId, request.getListingId(),
+                request.getCheckInDate(), request.getCheckOutDate(),
+                List.of(BookingStatus.APPLIED, BookingStatus.APPROVED, BookingStatus.CHECKED_IN))) {
+            throw new ServiceException(BOOKING_GUEST_OVERLAPPING_DATES);
+        }
         Booking booking = Booking.builder()
                 .listingId(request.getListingId())
                 .guestId(guestId)
+                .checkInDate(request.getCheckInDate())
+                .checkOutDate(request.getCheckOutDate())
                 .status(BookingStatus.APPLIED)
                 .appliedAt(LocalDateTime.now())
                 .build();
@@ -100,6 +115,20 @@ public class BookingServiceImpl implements BookingService {
             throw new ServiceException(SOURCE_WITH_ID_NOT_FOUND, "Booking (already decided)", id);
         }
         booking.setStatus(request.getStatus());
+        if (request.getStatus() == BookingStatus.APPROVED && booking.getCheckInDate() != null && booking.getCheckOutDate() != null) {
+            if (bookingRepository.existsOverlappingApprovedOrCheckedIn(booking.getListingId(),
+                    booking.getCheckInDate(), booking.getCheckOutDate(), id)) {
+                throw new ServiceException(BOOKING_LISTING_OCCUPIED_DATES);
+            }
+            List<Booking> overlapping = bookingRepository.findOverlappingAppliedByListingExcluding(
+                    booking.getListingId(), booking.getCheckInDate(), booking.getCheckOutDate(), id);
+            for (Booking other : overlapping) {
+                other.setStatus(BookingStatus.REJECTED);
+                bookingRepository.save(other);
+                notificationService.notifyUser(other.getGuestId(), NotificationType.BOOKING_REJECTED_ANOTHER_APPROVED,
+                        Map.of("bookingId", other.getId(), "listingId", other.getListingId()));
+            }
+        }
         BookingDto dto = mapper.toDto(bookingRepository.save(booking));
         eventPublisher.publishEvent(new EntityEvent<>(UPDATED, dto));
         if (request.getStatus() == BookingStatus.APPROVED) {

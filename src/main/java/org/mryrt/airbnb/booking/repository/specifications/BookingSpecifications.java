@@ -21,6 +21,8 @@ public final class BookingSpecifications {
                         filter == null || filter.getListingId() == null ? null : (root, q, cb) -> cb.equal(root.get("listingId"), filter.getListingId()))
                 .and(filter == null || filter.getGuestId() == null ? null : (root, q, cb) -> cb.equal(root.get("guestId"), filter.getGuestId()))
                 .and(filter == null || filter.getStatus() == null ? null : (root, q, cb) -> cb.equal(root.get("status"), filter.getStatus()))
+                .and(filter == null || filter.getCheckInDateFrom() == null ? null : (root, q, cb) -> cb.greaterThanOrEqualTo(root.get("checkInDate"), filter.getCheckInDateFrom()))
+                .and(filter == null || filter.getCheckOutDateTo() == null ? null : (root, q, cb) -> cb.lessThanOrEqualTo(root.get("checkOutDate"), filter.getCheckOutDateTo()))
                 .and(filter == null || filter.getAppliedAtAfter() == null ? null : (root, q, cb) -> cb.greaterThanOrEqualTo(root.get("appliedAt"), filter.getAppliedAtAfter()))
                 .and(filter == null || filter.getAppliedAtBefore() == null ? null : (root, q, cb) -> cb.lessThanOrEqualTo(root.get("appliedAt"), filter.getAppliedAtBefore()));
         if (scopeUserId == null) {

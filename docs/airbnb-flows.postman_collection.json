@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Airbnb API — все флоу (гость, владелец, админ)",
-    "description": "Коллекция для прохождения всех сценариев: регистрация, листинги, бронирования, окна разрешения споров, уведомления.",
+    "description": "Все сценарии API: регистрация, листинги, бронирования, окна разрешения споров, уведомления, пользователи. Подробное описание флоу, кто какую ручку дергает и что ожидать — см. docs/POSTMAN_FLOWS.md",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -326,10 +326,10 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"listingId\": {{listingId}}\n}"
+              "raw": "{\n  \"listingId\": {{listingId}},\n  \"checkInDate\": \"2025-06-01\",\n  \"checkOutDate\": \"2025-06-05\"\n}"
             },
             "url": "{{baseUrl}}/bookings",
-            "description": "Создание заявки на бронирование (гость). Нужен опубликованный listingId. Сохраняет bookingId."
+            "description": "Создание заявки на бронирование (гость). Обязательны listingId, checkInDate, checkOutDate (ISO-даты). Дата выезда должна быть позже даты въезда. В дату выезда может заехать следующий гость. Один гость не может иметь две заявки с пересекающимися датами по одному объявлению. При одобрении одной заявки остальные на те же даты отклоняются с уведомлением. Сохраняет bookingId."
           }
         },
         {
@@ -388,7 +388,7 @@
             "method": "PUT",
             "header": [{"key": "Authorization", "value": "Bearer {{accessToken}}"}],
             "url": "{{baseUrl}}/bookings/{{bookingId}}/check-in",
-            "description": "Фиксация въезда гостя (статус CHECKED_IN). Выполнить может только гость этого бронирования или админ (ALL_BOOKING_UPDATE); владелец листинга не может."
+            "description": "Въезд гостя → CHECKED_IN. Кто может: только гость этого бронирования или админ. Владелец получит 403. См. POSTMAN_FLOWS.md."
           }
         },
         {
@@ -397,7 +397,7 @@
             "method": "PUT",
             "header": [{"key": "Authorization", "value": "Bearer {{accessToken}}"}],
             "url": "{{baseUrl}}/bookings/{{bookingId}}/check-out",
-            "description": "Фиксация выезда гостя (статус CHECKED_OUT). Только гость этого бронирования или админ. После выезда может автоматически открыться окно разрешения споров."
+            "description": "Выезд гостя → CHECKED_OUT. Кто может: только гость этого бронирования или админ. После выезда может автоматически открыться окно разрешения споров."
           }
         }
       ]
@@ -446,11 +446,23 @@
         },
         {
           "name": "Get resolution by booking id",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var j = pm.response.json();",
+                  "if (j && j.id) pm.collectionVariables.set('resolutionId', j.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
           "request": {
             "method": "GET",
             "header": [{"key": "Authorization", "value": "Bearer {{accessToken}}"}],
             "url": "{{baseUrl}}/resolutions/booking/{{bookingId}}",
-            "description": "Окно разрешения по id бронирования."
+            "description": "Окно разрешения по bookingId. Если в ответе есть id — сохраняется в resolutionId. Кто может: гость/владелец этого бронирования или админ."
           }
         },
         {
@@ -466,7 +478,7 @@
               "raw": "{\n  \"amountRequested\": 150.50\n}"
             },
             "url": "{{baseUrl}}/resolutions/{{resolutionId}}/request-money",
-            "description": "Владелец запрашивает компенсацию с гостя (сумма в amountRequested)."
+            "description": "Запрос компенсации. Кто может: владелец этого окна или админ. Только из OPEN. Гостю уходит RESOLUTION_MONEY_REQUESTED."
           }
         },
         {
@@ -475,7 +487,7 @@
             "method": "PUT",
             "header": [{"key": "Authorization", "value": "Bearer {{accessToken}}"}],
             "url": "{{baseUrl}}/resolutions/{{resolutionId}}/respond-pay",
-            "description": "Гость согласен оплатить (конфликт урегулирован)."
+            "description": "Гость согласен оплатить. Кто может: гость этого окна или админ. Допустимо из MONEY_REQUESTED и MANDATORY_PAYMENT. Окно закрывается."
           }
         },
         {
@@ -484,7 +496,7 @@
             "method": "PUT",
             "header": [{"key": "Authorization", "value": "Bearer {{accessToken}}"}],
             "url": "{{baseUrl}}/resolutions/{{resolutionId}}/respond-refuse",
-            "description": "Гость отказывается платить."
+            "description": "Гость отказывается платить. Кто может: гость или админ. Статус → REFUSED. Дальше владелец может Escalate или Close."
           }
         },
         {
@@ -493,7 +505,7 @@
             "method": "PUT",
             "header": [{"key": "Authorization", "value": "Bearer {{accessToken}}"}],
             "url": "{{baseUrl}}/resolutions/{{resolutionId}}/escalate",
-            "description": "Владелец эскалирует после отказа гостя."
+            "description": "Владелец просит вмешательства Airbnb. Кто может: владелец этого окна или админ. Только из REFUSED. Статус → ESCALATED, гостю RESOLUTION_ESCALATED. Дальше только админ: Вмешательство Airbnb."
           }
         },
         {
@@ -509,7 +521,7 @@
               "raw": "{\n  \"description\": \"Жалоба на поведение гостя\"\n}"
             },
             "url": "{{baseUrl}}/resolutions/{{resolutionId}}/complaint",
-            "description": "Владелец подаёт жалобу (без запроса денег)."
+            "description": "Жалоба без запроса денег. Кто может: владелец или админ. Только из OPEN. Окно закрывается, статус COMPLAINT_RECORDED."
           }
         },
         {
@@ -518,24 +530,45 @@
             "method": "PUT",
             "header": [{"key": "Authorization", "value": "Bearer {{accessToken}}"}],
             "url": "{{baseUrl}}/resolutions/{{resolutionId}}/close",
-            "description": "Закрытие окна: админ — всегда; владелец — только из статуса REFUSED (закрыть без эскалации). Владельцу при закрытии без эскалации уходит RESOLUTION_WINDOW_CLOSED_BY_OWNER."
+            "description": "Закрыть окно. Админ — из любого статуса; владелец — только из REFUSED (закрыть без эскалации). Владельцу при закрытии без эскалации → RESOLUTION_WINDOW_CLOSED_BY_OWNER."
           }
         },
         {
-          "name": "Resolve escalation (admin)",
-          "request": {
-            "method": "PUT",
-            "header": [
-              {"key": "Content-Type", "value": "application/json"},
-              {"key": "Authorization", "value": "Bearer {{accessToken}}"}
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"substantialIncident\": true\n}"
+          "name": "Вмешательство Airbnb (после эскалации)",
+          "item": [
+            {
+              "name": "Обязательная выплата гостю (admin)",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {"key": "Content-Type", "value": "application/json"},
+                  {"key": "Authorization", "value": "Bearer {{accessToken}}"}
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"substantialIncident\": true\n}"
+                },
+                "url": "{{baseUrl}}/resolutions/{{resolutionId}}/resolve-escalation",
+                "description": "Назначить обязательную выплату гостю (существенное происшествие). Кто может: только админ. Статус → MANDATORY_PAYMENT, гостю RESOLUTION_MANDATORY_PAYMENT_ASSIGNED. Дальше гость может Respond pay."
+              }
             },
-            "url": "{{baseUrl}}/resolutions/{{resolutionId}}/resolve-escalation",
-            "description": "Решение по эскалации (только админ): true — назначить обязательную выплату гостю (MANDATORY_PAYMENT), false — урегулировать без взыскания, уведомить владельца."
-          }
+            {
+              "name": "Урегулировать конфликт без взыскания (admin)",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {"key": "Content-Type", "value": "application/json"},
+                  {"key": "Authorization", "value": "Bearer {{accessToken}}"}
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"substantialIncident\": false\n}"
+                },
+                "url": "{{baseUrl}}/resolutions/{{resolutionId}}/resolve-escalation",
+                "description": "Урегулировать без взыскания. Кто может: только админ. Окно закрывается, владельцу RESOLUTION_RESOLVED_WITHOUT_PAYMENT."
+              }
+            }
+          ]
         }
       ]
     },

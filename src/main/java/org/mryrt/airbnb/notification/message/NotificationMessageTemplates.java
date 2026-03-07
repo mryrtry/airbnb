@@ -16,6 +16,9 @@ public final class NotificationMessageTemplates {
     public static final String BOOKING_REJECTED_TITLE = "Заявка отклонена";
     public static final String BOOKING_REJECTED_BODY = "К сожалению, заявка #%s отклонена владельцем.";
 
+    public static final String BOOKING_REJECTED_ANOTHER_APPROVED_TITLE = "Заявка отклонена — одобрена другая";
+    public static final String BOOKING_REJECTED_ANOTHER_APPROVED_BODY = "Ваша заявка #%s по объявлению #%s отклонена: на эти даты одобрена заявка другого гостя. На одну дату может заехать только один гость.";
+
     public static final String BOOKING_CHECKED_IN_TITLE = "Гость въехал";
     public static final String BOOKING_CHECKED_IN_BODY = "Гость заехал по бронированию #%s.";
 
