@@ -8,6 +8,7 @@ import org.mryrt.airbnb.auth.dto.request.RoleRequest;
 import org.mryrt.airbnb.auth.dto.request.UserRequest;
 import org.mryrt.airbnb.auth.dto.request.UserUpdateRequest;
 import org.mryrt.airbnb.auth.exception.AuthCredNotValidException;
+import org.mryrt.airbnb.auth.jaas.XmlCredentialsStore;
 import org.mryrt.airbnb.auth.model.Permission;
 import org.mryrt.airbnb.auth.model.Role;
 import org.mryrt.airbnb.auth.model.User;
@@ -33,6 +34,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import static org.mryrt.airbnb.auth.exception.message.AuthErrorMessages.INCORRECT_PASSWORD;
 import static org.mryrt.airbnb.auth.exception.message.AuthErrorMessages.USER_NOT_AUTHENTICATED;
@@ -57,6 +59,8 @@ public class UserServiceImpl implements UserService {
     private final ApplicationEventPublisher eventPublisher;
 
     private final PageableFactory pageableFactory;
+
+    private final XmlCredentialsStore xmlCredentialsStore;
 
     private User findUser(Long id) {
         if (id == null) {
@@ -90,9 +94,11 @@ public class UserServiceImpl implements UserService {
         User user = new User();
         user.setUsername(request.getUsername());
         user.setEmail(request.getEmail());
-        user.setPassword(passwordEncoder.encode(request.getPassword()));
+        String encodedPassword = passwordEncoder.encode(request.getPassword());
+        user.setPassword(encodedPassword);
         user.setRoles(Set.of(Role.ROLE_USER));
         UserDto createdUser = mapper.toDto(userRepository.save(user));
+        xmlCredentialsStore.addOrUpdateUser(user.getUsername(), encodedPassword, Set.of(Role.ROLE_USER.name()));
         eventPublisher.publishEvent(new EntityEvent<>(CREATED, createdUser));
         return createdUser;
     }
@@ -146,8 +152,11 @@ public class UserServiceImpl implements UserService {
         updatingUser.setUsername(request.getUsername());
         if (request.getEmail() != null) updatingUser.setEmail(request.getEmail());
         if (request.getPassword() != null) {
-			updatingUser.setPassword(passwordEncoder.encode(request.getPassword()));
-		}
+            String encodedPassword = passwordEncoder.encode(request.getPassword());
+            updatingUser.setPassword(encodedPassword);
+            Set<String> roleNames = updatingUser.getRoles().stream().map(Enum::name).collect(Collectors.toSet());
+            xmlCredentialsStore.addOrUpdateUser(updatingUser.getUsername(), encodedPassword, roleNames);
+        }
         UserDto updatedUser = mapper.toDto(userRepository.save(updatingUser));
         eventPublisher.publishEvent(new EntityEvent<>(UPDATED, updatedUser));
         return updatedUser;
@@ -159,6 +168,8 @@ public class UserServiceImpl implements UserService {
         User updatingUser = findUser(id);
         updatingUser.setRoles(request.getRoles());
         UserDto updatedUser = mapper.toDto(userRepository.save(updatingUser));
+        Set<String> roleNames = request.getRoles().stream().map(Enum::name).collect(Collectors.toSet());
+        xmlCredentialsStore.addOrUpdateUser(updatingUser.getUsername(), updatingUser.getPassword(), roleNames);
         eventPublisher.publishEvent(new EntityEvent<>(UPDATED, updatedUser));
         return updatedUser;
     }
@@ -168,6 +179,7 @@ public class UserServiceImpl implements UserService {
     public UserDto delete(Long id) {
         User deletingUser = findUser(id);
         userRepository.delete(deletingUser);
+        xmlCredentialsStore.removeUser(deletingUser.getUsername());
         UserDto deletedUser = mapper.toDto(deletingUser);
         eventPublisher.publishEvent(new EntityEvent<>(DELETED, deletingUser));
         return deletedUser;

@@ -8,12 +8,17 @@ import org.mryrt.airbnb.auth.dto.UserDto;
 import org.mryrt.airbnb.auth.dto.request.LoginRequest;
 import org.mryrt.airbnb.auth.dto.request.TokenRequest;
 import org.mryrt.airbnb.auth.dto.request.UserRequest;
+import org.mryrt.airbnb.auth.exception.AuthCredNotValidException;
 import org.mryrt.airbnb.auth.service.jwt.DefaultJwtService;
 import org.mryrt.airbnb.auth.service.user.UserService;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -35,6 +40,9 @@ public class AuthController {
 
     private final DefaultJwtService jwtService;
 
+    @Qualifier("jaasAuthenticationManager")
+    private final AuthenticationManager jaasAuthenticationManager;
+
     /** Регистрация нового пользователя и выдача пары токенов. */
     @PostMapping("/register")
     public ResponseEntity<Map<String, Object>> register(@Valid @RequestBody UserRequest request) {
@@ -48,13 +56,19 @@ public class AuthController {
         ));
     }
 
-    /** Вход по логину и паролю, выдача пары токенов. */
+    /** Вход через JAAS (проверка по XML-файлу credentials), выдача пары JWT-токенов. */
     @PostMapping("/login")
     public ResponseEntity<Map<String, Object>> login(@Valid @RequestBody LoginRequest request) {
-        userService.validateLogin(request);
+        try {
+            jaasAuthenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
+            );
+        } catch (AuthenticationException e) {
+            throw new AuthCredNotValidException(Map.of("credentials", "Неверный логин или пароль"));
+        }
         UserDto user = userService.get(request.getUsername());
         Map<String, String> tokens = jwtService.generateTokenPair(request.getUsername());
-        log.info("User {} successfully authenticated", request.getUsername());
+        log.info("User {} successfully authenticated via JAAS", request.getUsername());
         request.clearPassword();
         return ResponseEntity.ok(Map.of(
                 "user", user,
