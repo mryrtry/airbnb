@@ -85,6 +85,7 @@ public class SecurityConfig {
         );
 
         DefaultJaasAuthenticationProvider provider = new DefaultJaasAuthenticationProvider();
+        provider.setLoginContextName("AirbnbLogin");
         provider.setConfiguration(jaasConfig);
         provider.setAuthorityGranters(new RolePrincipalAuthorityGranter[]{new RolePrincipalAuthorityGranter()});
         provider.afterPropertiesSet();
