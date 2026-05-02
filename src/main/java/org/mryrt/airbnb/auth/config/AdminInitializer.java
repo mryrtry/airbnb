@@ -4,21 +4,19 @@ import lombok.RequiredArgsConstructor;
 import org.mryrt.airbnb.auth.jaas.XmlCredentialsStore;
 import org.mryrt.airbnb.auth.model.Role;
 import org.mryrt.airbnb.auth.model.User;
-import org.mryrt.airbnb.auth.repository.UserRepository;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 import java.util.Set;
-import java.util.stream.Collectors;
 
 
 @Component
 @RequiredArgsConstructor
 public class AdminInitializer {
 
-    private final UserRepository userRepository;
+    private static final Set<Role> ADMIN_ROLES = Set.of(Role.ROLE_USER, Role.ROLE_OWNER, Role.ROLE_ADMIN);
 
     private final PasswordEncoder passwordEncoder;
 
@@ -26,22 +24,24 @@ public class AdminInitializer {
 
     @EventListener(ApplicationReadyEvent.class)
     public void initAdmin() {
-        String encodedPassword = passwordEncoder.encode("password");
+        xmlCredentialsStore.findByUsername("admin").ifPresentOrElse(
+                this::syncAdminRoles,
+                this::createAdmin
+        );
+    }
 
-        if (!userRepository.existsByUsername("admin")) {
-            User admin = User.builder()
-                    .username("admin")
-                    .password(encodedPassword)
-                    .roles(Set.of(Role.ROLE_USER, Role.ROLE_ADMIN))
-                    .build();
-            userRepository.save(admin);
-        }
+    private void createAdmin() {
+        User admin = new User();
+        admin.setUsername("admin");
+        admin.setPassword(passwordEncoder.encode("password"));
+        admin.setRoles(ADMIN_ROLES);
+        xmlCredentialsStore.saveUser(admin);
+    }
 
-        // Always sync admin credentials to XML so JAAS can authenticate
-        Set<String> roleNames = Set.of(Role.ROLE_USER, Role.ROLE_ADMIN).stream()
-                .map(Enum::name)
-                .collect(Collectors.toSet());
-        xmlCredentialsStore.addOrUpdateUser("admin", encodedPassword, roleNames);
+    private void syncAdminRoles(User admin) {
+        if (ADMIN_ROLES.equals(admin.getRoles())) return;
+        admin.setRoles(ADMIN_ROLES);
+        xmlCredentialsStore.saveUser(admin);
     }
 
 }

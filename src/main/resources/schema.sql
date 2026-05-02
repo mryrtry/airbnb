@@ -1,19 +1,3 @@
-CREATE TABLE IF NOT EXISTS users (
-    id          BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    username    VARCHAR(50)  NOT NULL,
-    email       VARCHAR(255),
-    password    VARCHAR(255) NOT NULL,
-    created_at  TIMESTAMP,
-    updated_at  TIMESTAMP,
-    CONSTRAINT uq_users_username UNIQUE (username)
-);
-
-CREATE TABLE IF NOT EXISTS user_roles (
-    user_id BIGINT      NOT NULL REFERENCES users (id) ON DELETE CASCADE,
-    role    VARCHAR(50) NOT NULL,
-    CONSTRAINT uq_user_roles UNIQUE (user_id, role)
-);
-
 CREATE TABLE IF NOT EXISTS listings (
     id                 BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     owner_id           BIGINT       NOT NULL REFERENCES users (id),

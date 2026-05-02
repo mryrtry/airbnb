@@ -1,13 +1,4 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!--
-  TomEE datasource definition — used ONLY for local development.
-  For production, define the same resource in TOMEE_HOME/conf/tomee.xml
-  and remove (or leave empty) this file.
-
-  The resource is registered in JNDI as:
-      openejb:Resource/airbnbDS
-  Spring reads it via spring.datasource.jndi-name in application-dev.properties.
--->
 <resources>
     <Resource id="airbnbDS" type="DataSource">
         JdbcDriver       = org.postgresql.Driver

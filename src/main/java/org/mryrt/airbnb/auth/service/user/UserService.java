@@ -19,6 +19,8 @@ public interface UserService extends UserDetailsService {
 
     UserDto create(@Valid UserRequest request);
 
+    UserDto createOwner(@Valid UserRequest request);
+
     Page<UserDto> getAll(UserFilter filter, PageableRequest config);
 
     UserDto get(Long id);

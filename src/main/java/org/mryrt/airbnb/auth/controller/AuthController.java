@@ -43,11 +43,24 @@ public class AuthController {
     @Qualifier("jaasAuthenticationManager")
     private final AuthenticationManager jaasAuthenticationManager;
 
-    /** Регистрация нового пользователя и выдача пары токенов. */
-    @PostMapping("/register")
-    public ResponseEntity<Map<String, Object>> register(@Valid @RequestBody UserRequest request) {
+    /** Регистрация нового пользователя (гостя) и выдача пары токенов. */
+    @PostMapping("/register-user")
+    public ResponseEntity<Map<String, Object>> registerUser(@Valid @RequestBody UserRequest request) {
         log.info("Registering new user: {}", request.getUsername());
         UserDto user = userService.create(request);
+        Map<String, String> tokens = jwtService.generateTokenPair(user.getUsername());
+        request.clearPassword();
+        return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
+                "user", user,
+                "tokens", tokens
+        ));
+    }
+
+    /** Регистрация нового владельца жилья (роли USER + OWNER) и выдача пары токенов. */
+    @PostMapping("/register-owner")
+    public ResponseEntity<Map<String, Object>> registerOwner(@Valid @RequestBody UserRequest request) {
+        log.info("Registering new owner: {}", request.getUsername());
+        UserDto user = userService.createOwner(request);
         Map<String, String> tokens = jwtService.generateTokenPair(user.getUsername());
         request.clearPassword();
         return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
