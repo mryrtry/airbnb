@@ -1,9 +1,15 @@
 package org.mryrt.airbnb.auth.config;
 
 import lombok.RequiredArgsConstructor;
+import org.mryrt.airbnb.auth.jaas.RolePrincipalAuthorityGranter;
+import org.mryrt.airbnb.auth.jaas.XmlCredentialsStore;
+import org.mryrt.airbnb.auth.jaas.XmlFileLoginModule;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.ProviderManager;
+import org.springframework.security.authentication.jaas.DefaultJaasAuthenticationProvider;
+import org.springframework.security.authentication.jaas.memory.InMemoryConfiguration;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -16,7 +22,9 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import javax.security.auth.login.AppConfigurationEntry;
 import java.util.List;
+import java.util.Map;
 
 
 @Configuration
@@ -28,6 +36,8 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthFilter;
 
     private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
+
+    private final XmlCredentialsStore xmlCredentialsStore;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -51,6 +61,35 @@ public class SecurityConfig {
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
         return config.getAuthenticationManager();
+    }
+
+    /**
+     * Dedicated AuthenticationManager that delegates only to the JAAS provider.
+     * Used by AuthController for username/password login.
+     */
+    @Bean("jaasAuthenticationManager")
+    public AuthenticationManager jaasAuthenticationManager() throws Exception {
+        return new ProviderManager(jaasAuthenticationProvider());
+    }
+
+    @Bean
+    public DefaultJaasAuthenticationProvider jaasAuthenticationProvider() throws Exception {
+        AppConfigurationEntry xmlLoginEntry = new AppConfigurationEntry(
+                XmlFileLoginModule.class.getName(),
+                AppConfigurationEntry.LoginModuleControlFlag.REQUIRED,
+                Map.of("xmlFilePath", xmlCredentialsStore.getFilePath())
+        );
+
+        InMemoryConfiguration jaasConfig = new InMemoryConfiguration(
+                Map.of("AirbnbLogin", new AppConfigurationEntry[]{xmlLoginEntry})
+        );
+
+        DefaultJaasAuthenticationProvider provider = new DefaultJaasAuthenticationProvider();
+        provider.setLoginContextName("AirbnbLogin");
+        provider.setConfiguration(jaasConfig);
+        provider.setAuthorityGranters(new RolePrincipalAuthorityGranter[]{new RolePrincipalAuthorityGranter()});
+        provider.afterPropertiesSet();
+        return provider;
     }
 
     @Bean

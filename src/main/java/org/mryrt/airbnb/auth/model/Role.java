@@ -8,18 +8,21 @@ import java.util.Set;
 public enum Role {
     ROLE_USER(Set.of(
             Permission.LISTING_READ,
+            Permission.BOOKING_READ,
+            Permission.BOOKING_CREATE,
+            Permission.RESOLUTION_READ,
+            Permission.RESOLUTION_RESPOND,
+            Permission.NOTIFICATION_READ
+    )),
+    ROLE_OWNER(Set.of(
             Permission.LISTING_CREATE,
             Permission.LISTING_UPDATE,
             Permission.LISTING_DELETE,
-            Permission.BOOKING_READ,
-            Permission.BOOKING_CREATE,
             Permission.BOOKING_DECIDE,
-            Permission.RESOLUTION_READ,
+            Permission.RESOLUTION_OPEN,
             Permission.RESOLUTION_REQUEST_MONEY,
-            Permission.RESOLUTION_RESPOND,
             Permission.RESOLUTION_ESCALATE,
-            Permission.RESOLUTION_COMPLAINT,
-            Permission.NOTIFICATION_READ
+            Permission.RESOLUTION_COMPLAINT
     )),
     ROLE_ADMIN(Set.of(
             Permission.ALL_USER_READ,
@@ -32,20 +35,7 @@ public enum Role {
             Permission.ALL_BOOKING_UPDATE,
             Permission.ALL_RESOLUTION_READ,
             Permission.ALL_RESOLUTION_UPDATE,
-            Permission.ALL_NOTIFICATION_READ,
-            Permission.LISTING_READ,
-            Permission.LISTING_CREATE,
-            Permission.LISTING_UPDATE,
-            Permission.LISTING_DELETE,
-            Permission.BOOKING_READ,
-            Permission.BOOKING_CREATE,
-            Permission.BOOKING_DECIDE,
-            Permission.RESOLUTION_READ,
-            Permission.RESOLUTION_REQUEST_MONEY,
-            Permission.RESOLUTION_RESPOND,
-            Permission.RESOLUTION_ESCALATE,
-            Permission.RESOLUTION_COMPLAINT,
-            Permission.NOTIFICATION_READ
+            Permission.ALL_NOTIFICATION_READ
     ));
 
     private final Set<Permission> permissions;

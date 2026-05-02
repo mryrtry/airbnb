@@ -1,7 +1,7 @@
 package org.mryrt.airbnb.notification.service;
 
 import lombok.RequiredArgsConstructor;
-import org.mryrt.airbnb.auth.repository.UserRepository;
+import org.mryrt.airbnb.auth.jaas.XmlCredentialsStore;
 import org.mryrt.airbnb.exception.ServiceException;
 import org.mryrt.airbnb.notification.dto.NotificationDto;
 import org.mryrt.airbnb.notification.dto.NotificationMapper;
@@ -34,7 +34,7 @@ public class NotificationServiceImpl implements NotificationService {
     private final NotificationMapper mapper;
     private final PageableFactory pageableFactory;
     private final EmailService emailService;
-    private final UserRepository userRepository;
+    private final XmlCredentialsStore xmlCredentialsStore;
     private final NotificationMessageProvider messageProvider;
 
     @Override
@@ -63,7 +63,7 @@ public class NotificationServiceImpl implements NotificationService {
                 .read(false)
                 .build();
         notificationRepository.save(n);
-        userRepository.findById(userId)
+        xmlCredentialsStore.findById(userId)
                 .filter(u -> u.getEmail() != null && !u.getEmail().isBlank())
                 .ifPresent(u -> emailService.send(u.getEmail(), title, body != null ? body : title));
     }

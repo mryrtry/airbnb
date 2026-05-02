@@ -34,7 +34,7 @@ public class ResolutionController {
 
     /** Открывает окно разрешения споров для бронирования (после выезда). */
     @PostMapping("/open/{bookingId}")
-    @PreAuthorize("hasAuthority('RESOLUTION_READ') or hasAuthority('ALL_RESOLUTION_UPDATE')")
+    @PreAuthorize("hasAuthority('RESOLUTION_OPEN') or hasAuthority('ALL_RESOLUTION_UPDATE')")
     public ResponseEntity<ResolutionDto> openForBooking(@PathVariable Long bookingId) {
         return ResponseEntity.status(HttpStatus.CREATED).body(resolutionService.openForBooking(bookingId));
     }
